@@ -3,13 +3,16 @@ import ReactDOM from 'react-dom';
 import './app/layout/styles.css';
 import App from './app/layout/App';
 import reportWebVitals from './reportWebVitals';
-import { BrowserRouter } from 'react-router-dom';
+import { createBrowserHistory } from 'history';
+import { CustomRouter } from './app/models/CustomRouter';
+
+export const customHistory = createBrowserHistory();
 
 ReactDOM.render(
   <React.StrictMode>
-    <BrowserRouter>
+    <CustomRouter history={customHistory}>
       <App />
-    </BrowserRouter>
+    </CustomRouter>
   </React.StrictMode>,
   document.getElementById('root')
 );
