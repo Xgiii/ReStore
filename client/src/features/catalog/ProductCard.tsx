@@ -9,28 +9,19 @@ import {
   CardHeader,
   Avatar,
 } from '@mui/material';
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import agent from '../../app/api/agent';
-import { useStoreContext } from '../../app/context/StoreContext';
 import { Product } from '../../app/models/products';
+import { useAppDispatch, useAppSelector } from '../../app/store/configureStore';
 import { currencyFormat } from '../../app/util/util';
+import { addBasketItemAsync } from '../basket/basketSlice';
 
 interface Props {
   product: Product;
 }
 
 const ProductCard = ({ product }: Props) => {
-  const [loading, setLoading] = useState(false);
-  const {setBasket} = useStoreContext()
-
-  const addItemToBasketHandler = () => {
-    setLoading(true);
-    agent.Basket.addItem(product.id)
-      .then(basket => setBasket(basket))
-      .catch((err) => console.log(err))
-      .finally(() => setLoading(false));
-  };
+  const {status} = useAppSelector(state => state.basket)
+  const dispatch = useAppDispatch()
 
   return (
     <Card>
@@ -62,8 +53,8 @@ const ProductCard = ({ product }: Props) => {
       </CardContent>
       <CardActions>
         <LoadingButton
-          loading={loading}
-          onClick={addItemToBasketHandler}
+          loading={status === 'pendingAddItem' + product.id}
+          onClick={() => dispatch(addBasketItemAsync({productId: product.id}))}
           size='small'
         >
           Add to cart

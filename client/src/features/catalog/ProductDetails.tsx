@@ -12,29 +12,27 @@ import {
 } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import agent from '../../app/api/agent';
-import { useStoreContext } from '../../app/context/StoreContext';
+
 import NotFound from '../../app/errors/NotFound';
 import LoadingComponent from '../../app/layout/LoadingComponent';
-import { Product } from '../../app/models/products';
+import { useAppDispatch, useAppSelector } from '../../app/store/configureStore';
+import { addBasketItemAsync, removeBasketItemAsync } from '../basket/basketSlice';
+import { fetchProductAsync, productSelectors } from './catalogSlice';
 
 const ProductDetails = () => {
-  const { basket, setBasket, removeItem } = useStoreContext();
+  const { basket, status } = useAppSelector(state => state.basket);
+  const dispatch = useAppDispatch()
   const { id } = useParams<{ id: string }>();
-  const [product, setProduct] = useState<Product | null>(null);
-  const [loading, setLoading] = useState(true);
+  const product = useAppSelector(state => productSelectors.selectById(state, id!))
+  const {status: productStatus} = useAppSelector(state => state.catalog)
   const [quantity, setQuantity] = useState(0);
-  const [submitting, setSubmitting] = useState(false);
 
   const item = basket?.items.find((i) => i.productId === product?.id);
 
   useEffect(() => {
     if (item) setQuantity(item.quantity);
-    agent.Catalog.details(parseInt(id!))
-      .then((product) => setProduct(product))
-      .catch((err) => err)
-      .finally(() => setLoading(false));
-  }, [id, item]);
+    if(!product) dispatch(fetchProductAsync(parseInt(id!)))
+  }, [id, item, dispatch, product]);
 
   const inputChangeHandler = (e: any) => {
     if (e.target.value >= 0) {
@@ -43,23 +41,16 @@ const ProductDetails = () => {
   };
 
   const updateCartHandler = () => {
-    setSubmitting(true);
     if (!item || quantity > item.quantity) {
       const updatedQuantity = item ? quantity - item.quantity : quantity;
-      agent.Basket.addItem(product?.id!, updatedQuantity)
-        .then((basket) => setBasket(basket))
-        .catch((err) => console.log(err))
-        .finally(() => setSubmitting(false));
+      dispatch(addBasketItemAsync({productId: product?.id!, quantity: updatedQuantity}))
     } else {
       const updatedQuantity = item.quantity - quantity;
-      agent.Basket.removeItem(product?.id!, updatedQuantity)
-        .then(() => removeItem(product?.id!, updatedQuantity))
-        .catch((err) => console.log(err))
-        .finally(() => setSubmitting(false));
+      dispatch(removeBasketItemAsync({productId: product?.id!, quantity: updatedQuantity}))
     }
   };
 
-  if (loading) return <LoadingComponent message='Loading product...' />;
+  if (productStatus.includes('pending')) return <LoadingComponent message='Loading product...' />;
 
   if (!product) return <NotFound />;
 
@@ -118,7 +109,7 @@ const ProductDetails = () => {
           <Grid item xs={6}>
             <LoadingButton
               disabled={item?.quantity === quantity || (!item && quantity === 0)}
-              loading={submitting}
+              loading={status.includes('pending')}
               onClick={updateCartHandler}
               sx={{ height: '55px' }}
               color='primary'
